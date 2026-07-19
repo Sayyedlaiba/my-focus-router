@@ -15,11 +15,12 @@ if "focus_active" not in st.session_state:
 if "start_time" not in st.session_state:
     st.session_state.start_time = 0
 
-# 1. The Browser Audio Recorder Component
+# Change your mic_recorder block to look exactly like this:
 audio_data = mic_recorder(
     start_prompt="🎙️ Click to Speak",
     stop_prompt="🛑 Click to Stop Recording",
     just_once=True,
+    format="wav",  # <-- Add this line right here!
     key="speaker"
 )
 

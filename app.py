@@ -9,31 +9,31 @@ st.set_page_config(page_title="Deep Work Router", page_icon="🚀", layout="cent
 st.title("🚀 Deep Work Voice Router")
 st.write("Click the mic below and say **'start focus'** or **'deep work'** to launch your environment!")
 
-# Initialize session states to track if we are in focus mode
+# Initialize session states to track focus sessions and warnings
 if "focus_active" not in st.session_state:
     st.session_state.focus_active = False
 if "start_time" not in st.session_state:
     st.session_state.start_time = 0
+if "warning_msg" not in st.session_state:
+    st.session_state.warning_msg = ""
 
-# Change your mic_recorder block to look exactly like this:
+# 1. The Browser Audio Recorder Component
 audio_data = mic_recorder(
     start_prompt="🎙️ Click to Speak",
     stop_prompt="🛑 Click to Stop Recording",
     just_once=True,
-    format="wav",  # <-- Add this line right here!
+    format="wav",
     key="speaker"
 )
 
 # 2. Process the voice recording if it exists
 if audio_data and not st.session_state.focus_active:
-    # Convert raw browser audio bytes into a file-like object Python can read
     audio_bytes = audio_data['bytes']
     audio_file = io.BytesIO(audio_bytes)
     
     recognizer = sr.Recognizer()
     
     with sr.AudioFile(audio_file) as source:
-        # Load the recorded audio
         audio_recorded = recognizer.record(source)
         
         try:
@@ -42,11 +42,11 @@ if audio_data and not st.session_state.focus_active:
             
             st.success(f"Heard: \"{command}\"")
             
-            # Check for our trigger phrases
             if "start focus" in command or "deep work" in command:
                 st.session_state.focus_active = True
                 st.session_state.start_time = time.time()
-                st.rerun() # Refresh the page to start the timer
+                st.session_state.warning_msg = "" # Reset warnings
+                st.rerun()
             else:
                 st.warning("Trigger phrase not recognized. Try saying 'start focus'!")
                 
@@ -57,7 +57,7 @@ if audio_data and not st.session_state.focus_active:
 
 # 3. Active Focus Mode UI
 if st.session_state.focus_active:
-    duration = 30 # 30-second test session
+    duration = 60 # Extended to 60 seconds to give you time to test it
     elapsed = time.time() - st.session_state.start_time
     remaining = int(duration - elapsed)
     
@@ -66,20 +66,34 @@ if st.session_state.focus_active:
         st.progress(remaining / duration)
         st.metric(label="Time Remaining", value=f"{remaining} seconds")
         
-        # Link routing for the user
         st.info("🔗 **Your Workspace is Ready:** [Click here to open Python Documentation](https://docs.python.org/3/)")
         
-        # Cloud friendly distraction mitigation: Interactive Commitment Checklist
-        st.subheader("🛡️ Focus Commitment Checklist")
-        st.markdown("Since this app is running in the cloud, check these off to lock in your focus:")
-        st.checkbox("I have closed my social media tabs.")
-        st.checkbox("My phone is placed face down or in another room.")
-        st.checkbox("I am committed to staying on the documentation page.")
+        # --- NEW INTERACTIVE DISTRACTION TRAP FEATURE ---
+        st.markdown("---")
+        st.subheader("😈 The Distraction Trap")
+        st.write("Test the router! If you feel an impulse to visit a distracting site, type it below:")
         
-        # Auto-refresh the Streamlit page every second to update the countdown
+        # Text input acts as a honeypot trap
+        user_impulse = st.text_input("Where do you want to go?", value="", placeholder="e.g., youtube.com, facebook.com", key="trap_input")
+        
+        # Check if the user typed a blacklisted site
+        DISTRACTING_SITES = ["youtube.com", "facebook.com", "twitter.com", "instagram.com", "reddit.com"]
+        if user_impulse:
+            matched_site = [site for site in DISTRACTING_SITES if site in user_impulse.lower()]
+            if matched_site:
+                st.session_state.warning_msg = f"🛑 Intercepted! You tried to search for **{matched_site[0]}**. Stay focused on your documentation!"
+                # Force an app rerun to clear the input text box text instantly
+                st.rerun()
+        
+        # Display the warning if triggered
+        if st.session_state.warning_msg:
+            st.error(st.session_state.warning_msg)
+        # ------------------------------------------------
+        
         time.sleep(1)
         st.rerun()
     else:
         st.session_state.focus_active = False
+        st.session_state.warning_msg = ""
         st.balloons()
         st.success("🎉 Session complete! Excellent deep work. Go take a break!")
